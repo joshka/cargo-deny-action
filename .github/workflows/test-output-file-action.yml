@@ -11,7 +11,7 @@ permissions:
   security-events: write
 
 jobs:
-  output-file:
+  output-file-success:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -33,3 +33,28 @@ jobs:
         if: always()
         with:
           sarif_file: cargo-deny.sarif
+
+  output-file-failure:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ban test dependency
+        run: |
+          sed -i '/deny = \[/a\\    { name = "lazy_static" },' test/deny.toml
+
+      - uses: joshka/cargo-deny-action@joshka/output-file
+        id: cargo-deny
+        continue-on-error: true
+        with:
+          arguments: --format sarif --all-features
+          manifest-path: test/Cargo.toml
+          command: check bans
+          output-file: cargo-deny-failure.sarif
+
+      - name: Check failed action still wrote SARIF
+        run: |
+          test "${{ steps.cargo-deny.outcome }}" = "failure"
+          test -s cargo-deny-failure.sarif
+          grep '"version": "2.1.0"' cargo-deny-failure.sarif
+          test "${{ steps.cargo-deny.outputs.output-file }}" = "cargo-deny-failure.sarif"
