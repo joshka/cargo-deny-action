@@ -1,6 +1,7 @@
 name: Test output-file action
 
 on:
+  pull_request:
   push:
     branches:
       - joshka/test-output-file-workflow
