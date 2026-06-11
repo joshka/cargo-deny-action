@@ -1,0 +1,36 @@
+name: Test PR code scanning alert
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  cargo-deny:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: joshka/cargo-deny-action@joshka/output-file
+        id: cargo-deny
+        continue-on-error: true
+        with:
+          arguments: --format sarif --all-features
+          command: check
+          command-arguments: --config deny.toml bans
+          output-file: cargo-deny.sarif
+
+      - name: Check generated SARIF
+        run: |
+          test "${{ steps.cargo-deny.outputs.output-file }}" = "cargo-deny.sarif"
+          test -s cargo-deny.sarif
+          grep '"version": "2.1.0"' cargo-deny.sarif
+          grep '"b:banned"' cargo-deny.sarif
+
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: cargo-deny.sarif
