@@ -47,15 +47,15 @@ jobs:
         id: cargo-deny
         continue-on-error: true
         with:
-          arguments: --format sarif --all-features
+          arguments: --all-features
           manifest-path: test/Cargo.toml
           command: check
           command-arguments: --config test/deny.toml bans
-          output-file: cargo-deny-failure.sarif
+          output-file: cargo-deny-failure.txt
 
-      - name: Check failed action still wrote SARIF
+      - name: Check failed action still wrote output
         run: |
           test "${{ steps.cargo-deny.outcome }}" = "failure"
-          test -s cargo-deny-failure.sarif
-          grep '"version": "2.1.0"' cargo-deny-failure.sarif
-          test "${{ steps.cargo-deny.outputs.output-file }}" = "cargo-deny-failure.sarif"
+          test -s cargo-deny-failure.txt
+          grep 'FAILED' cargo-deny-failure.txt
+          test "${{ steps.cargo-deny.outputs.output-file }}" = "cargo-deny-failure.txt"
