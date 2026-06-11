@@ -1,0 +1,35 @@
+name: Test output-file action
+
+on:
+  push:
+    branches:
+      - joshka/test-output-file-workflow
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  output-file:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: joshka/cargo-deny-action@joshka/output-file
+        id: cargo-deny
+        continue-on-error: true
+        with:
+          arguments: --format sarif --all-features
+          output-file: cargo-deny.sarif
+
+      - name: Check generated SARIF
+        run: |
+          test -s cargo-deny.sarif
+          grep '"version": "2.1.0"' cargo-deny.sarif
+          test "${{ steps.cargo-deny.outputs.output-file }}" = "cargo-deny.sarif"
+
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: cargo-deny.sarif
