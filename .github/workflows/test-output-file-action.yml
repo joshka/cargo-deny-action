@@ -49,7 +49,8 @@ jobs:
         with:
           arguments: --format sarif --all-features
           manifest-path: test/Cargo.toml
-          command: check bans
+          command: check
+          command-arguments: --config test/deny.toml bans
           output-file: cargo-deny-failure.sarif
 
       - name: Check failed action still wrote SARIF
