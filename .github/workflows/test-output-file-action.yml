@@ -1,0 +1,62 @@
+name: Test output-file action
+
+on:
+  pull_request:
+  push:
+    branches:
+      - joshka/test-output-file-workflow
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  output-file-success:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: joshka/cargo-deny-action@joshka/output-file
+        id: cargo-deny
+        continue-on-error: true
+        with:
+          arguments: --format sarif --all-features
+          output-file: cargo-deny.sarif
+
+      - name: Check generated SARIF
+        run: |
+          test -s cargo-deny.sarif
+          grep '"version": "2.1.0"' cargo-deny.sarif
+          test "${{ steps.cargo-deny.outputs.output-file }}" = "cargo-deny.sarif"
+
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: cargo-deny.sarif
+
+  output-file-failure:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ban test dependency
+        run: |
+          sed -i '/deny = \[/a\\    { name = "lazy_static" },' test/deny.toml
+
+      - uses: joshka/cargo-deny-action@joshka/output-file
+        id: cargo-deny
+        continue-on-error: true
+        with:
+          arguments: --all-features
+          manifest-path: test/Cargo.toml
+          command: check
+          command-arguments: --config test/deny.toml bans
+          output-file: cargo-deny-failure.txt
+
+      - name: Check failed action still wrote output
+        run: |
+          test "${{ steps.cargo-deny.outcome }}" = "failure"
+          test -s cargo-deny-failure.txt
+          grep 'FAILED' cargo-deny-failure.txt
+          test "${{ steps.cargo-deny.outputs.output-file }}" = "cargo-deny-failure.txt"
